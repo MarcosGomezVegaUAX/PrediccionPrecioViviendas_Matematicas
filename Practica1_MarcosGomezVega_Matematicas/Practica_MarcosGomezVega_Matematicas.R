@@ -432,15 +432,84 @@ View(df_encoded)
 summary(df_encoded)
 dim(df_encoded)
 
+# +-------------------------------------------------------------+
+# | División de los datos en conjunto de entrenamiento y prueba |
+# +-------------------------------------------------------------+
+
+# Dividmoes el dataset en conjunto de entrenamiento 60%
+# prueba 20% y validacion 20%
+set.seed(123)
+n <- nrow(df_encoded)
+train_indices <- sample(1:n, size = 0.6 * n)
+remaining_indices <- setdiff(1:n, train_indices)
+test_indices <- sample(remaining_indices,
+                       size = 0.5 * length(remaining_indices))
+val_indices <- setdiff(remaining_indices, test_indices)
+
+
+print(paste("Tamaño del conjunto de entrenamiento:",
+            length(train_indices)))
+print(paste("Tamaño del conjunto de prueba:",
+            length(test_indices)))
+print(paste("Tamaño del conjunto de validación:",
+            length(val_indices)))
+
+# Creamos los conjuntos de datos
+train_data <- df_encoded[train_indices, ]
+test_data <- df_encoded[test_indices, ]
+val_data <- df_encoded[val_indices, ]
+
+print("Dimensiones del conjunto de entrenamiento:")
+print(dim(train_data))
+print("Dimensiones del conjunto de prueba:")
+print(dim(test_data))
+print("Dimensiones del conjunto de validación:")
+print(dim(val_data))
+
+# +-----------------------------------------------------------------+
+# | Filtro de Variables con Varianza Cero (Constantes) antes de PCA |
+# +-----------------------------------------------------------------+
+
+# Inicializar los conjuntos finales
+df_train_final <- train_data
+df_test_final <- test_data
+df_val_final <- val_data
+
+predict_vars <- setdiff(names(df_train_final), c("SalePrice", "Log_SalePrice"))
+
+unique_counts <- sapply(df_train_final[, predict_vars],
+                        function(x) length(unique(x)))
+
+zero_variance_vars <- names(unique_counts[unique_counts <= 1])
+
+print("Variables con varianza cero en el conjunto de entrenamiento:")
+print(zero_variance_vars)
+
+if (length(zero_variance_vars) > 0) {
+  vars_to_keep <- setdiff(names(df_train_final), zero_variance_vars)
+  df_train_final <- df_train_final %>% select(all_of(vars_to_keep))
+  df_test_final <- df_test_final %>% select(all_of(vars_to_keep))
+  df_val_final <- df_val_final %>% select(all_of(vars_to_keep))
+
+  print("Dimensiones después de eliminar variables con varianza cero:")
+  print(length(zero_variance_vars))
+} else {
+  print("No se encontraron variables con varianza cero.")
+}
+print("Dimensiones de entrenamiento final:")
+print(dim(df_train_final))
+print("Dimensiones de prueba final:")
+print(dim(df_test_final))
+print("Dimensiones de validación final:")
+print(dim(df_val_final))
+
 # +---------------------------------------------+
 # | Análisis de Componentes Principales (PCA)   |
 # +---------------------------------------------+
 
-# 1. Aplicamos PCA para reducción de dimensionalidad y asi
-# eliminar multicolinealidad y encontrar las variables
-# que mas influyen en el precio de venta
+# 1. Usamos la función prcomp para realizar PCA
 
-respca <- prcomp(df_encoded %>% select(-SalePrice, -Log_SalePrice),
+respca <- prcomp(df_train_final %>% select(-SalePrice, -Log_SalePrice),
                  center = TRUE,
                  scale. = TRUE)
 names(respca)
@@ -451,9 +520,9 @@ respca$sdev
 respca ~ sdev^2
 summary(respca)
 
-# Nos quedamos con los 100 primeros componentes principales
+# Nos quedamos con los 90 primeros componentes principales
 # ya que estan muy dispersosn y la proporcion acumuluda de varianza
-# es de un 86.212%
+# es de un 86.329%
 
 # 2. Visualización
 fviz_eig(respca)
@@ -465,14 +534,47 @@ fviz_contrib(respca, choice = "var") +
 fviz_contrib(respca, choice = "ind") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
 
-# 3. Selección de Componentes Principales
-num_componentes <- 100
-df_pca <- as.data.frame(respca$x[, 1:num_componentes])
-df_pca$SalePrice <- df_encoded$SalePrice
-df_pca$Log_SalePrice <- df_encoded$Log_SalePrice
-View(df_pca)
-summary(df_pca)
-dim(df_pca)
+# 3. Selección de Componentes Principales para el entrenamiento
+num_componentes <- 90
+
+df_pca_train <- as.data.frame(respca$x[, 1:num_componentes])
+df_pca_train$SalePrice <- df_train_final$SalePrice
+df_pca_train$Log_SalePrice <- df_train_final$Log_SalePrice
+
+View(df_pca_train)
+dim(df_pca_train)
+
+# 4. Transformación de los conjuntos de prueba y validación
+# respca contiene las "formulas" para crear los PC
+# a partir de esta "formulas" y usando predict y
+# los datos de prueba y validacion se crean los nuevos dataframes
+# y de esos dataframes se seleccionan los primeros num_componentes
+test_pca_transformed <- predict(respca,
+                                newdata = df_test_final %>%
+                                  select(-SalePrice, -Log_SalePrice))
+
+df_pca_test <- as.data.frame(test_pca_transformed[, 1:num_componentes])
+df_pca_test$SalePrice <- df_test_final$SalePrice
+df_pca_test$Log_SalePrice <- df_test_final$Log_SalePrice
+
+val_pca_transformed <- predict(respca,
+                               newdata = df_val_final %>%
+                                 select(-SalePrice, -Log_SalePrice))
+df_pca_val <- as.data.frame(val_pca_transformed[, 1:num_componentes])
+df_pca_val$SalePrice <- df_val_final$SalePrice
+df_pca_val$Log_SalePrice <- df_val_final$Log_SalePrice
+
+print("--- Dimensiones de los DataFrames PCA ---")
+print("Dimensiones de PCA (Entrenamiento):")
+print(dim(df_pca_train))
+print("Dimensiones de PCA (Prueba):")
+print(dim(df_pca_test))
+print("Dimensiones de PCA (Validación):")
+print(dim(df_pca_val))
+
+View(df_pca_test)
+View(df_pca_val)
+View(df_pca_train)
 
 
 # +----------------+
