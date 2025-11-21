@@ -1,15 +1,17 @@
 # +----------------------+
 # | Carga de librerías   |
 # +----------------------+
-#install.packages(c("tidyverse",
-#                  "skimr",
-#                  "DataExplorer",
-#                  "corrplot",
-#                  "GGally",
-#                  "readr",
-#                  "skimr",
-#                  "dplyr",
-#                  "tidyr"))
+# install.packages(c("tidyverse",
+#                    "skimr",
+#                    "DataExplorer",
+#                    "corrplot",
+#                    "GGally",
+#                    "readr",
+#                    "skimr",
+#                    "dplyr",
+#                    "tidyr",
+#                    "stats",
+#                    "factoextra"))
 library(tidyverse)
 library(readr)
 library(skimr)
@@ -19,7 +21,8 @@ library(GGally)
 library(skimr)
 library(dplyr)
 library(tidyr)
-
+library(stats)
+library(factoextra)
 # +----------------------------------+
 # | Carga de datos y su inspección   |
 # +----------------------------------+
@@ -106,10 +109,10 @@ View(df)
 # ----------------------------------------------------------------------
 ### 4. Recalculo de Valores na
 
-na_counts_iniciales <- contar_nas(df)
+na_counts_restantes <- contar_nas(df)
 
 print("Variables con valores faltantes (NA_Count > 0):")
-print(na_counts_iniciales)
+print(na_counts_restantes)
 
 # ------------------------------------------------------
 ### 5. Sustituimos variables con muchas lineas
@@ -120,10 +123,10 @@ df$LotFrontage <- ifelse(is.na(df$LotFrontage),
                          media_lotfrontage,
                          df$LotFrontage)
 
-na_counts_iniciales <- contar_nas(df)
+na_counts_restantes <- contar_nas(df)
 
 print("Variables con valores faltantes (NA_Count > 0):")
-print(na_counts_iniciales)
+print(na_counts_restantes)
 
 # ----------------------------------------------------------------------
 ### 6. Eliminacción de las varibles restantes con Na ya que son fallos
@@ -133,10 +136,10 @@ df <- df %>%
 View(df)
 
 # Verificamos que ya no hay NA
-na_counts_iniciales <- contar_nas(df)
+na_counts_restantes <- contar_nas(df)
 
 print("Variables con valores faltantes (NA_Count > 0):")
-print(na_counts_iniciales)
+print(na_counts_restantes)
 
 # ----------------------------------------------------------------------
 ### 7. Detección de Variables Duplicadas
@@ -427,7 +430,57 @@ vars_a_estandarizar <- setdiff(names(df_encoded),
 df_encoded[vars_a_estandarizar] <- scale(df_encoded[vars_a_estandarizar])
 View(df_encoded)
 summary(df_encoded)
+dim(df_encoded)
 
 # +---------------------------------------------+
 # | Análisis de Componentes Principales (PCA)   |
 # +---------------------------------------------+
+
+# 1. Aplicamos PCA para reducción de dimensionalidad y asi
+# eliminar multicolinealidad y encontrar las variables
+# que mas influyen en el precio de venta
+
+respca <- prcomp(df_encoded %>% select(-SalePrice, -Log_SalePrice),
+                 center = TRUE,
+                 scale. = TRUE)
+names(respca)
+head(respca$rotation)[, 1:5]
+dim(respca$rotation)
+head(respca$x)[, 1:5]
+respca$sdev
+respca ~ sdev^2
+summary(respca)
+
+# Nos quedamos con los 100 primeros componentes principales
+# ya que estan muy dispersosn y la proporcion acumuluda de varianza
+# es de un 86.212%
+
+# 2. Visualización
+fviz_eig(respca)
+fviz_screeplot(respca)
+
+# Contribución de las variables a los componentes principales
+fviz_contrib(respca, choice = "var") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+fviz_contrib(respca, choice = "ind") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+
+# 3. Selección de Componentes Principales
+num_componentes <- 100
+df_pca <- as.data.frame(respca$x[, 1:num_componentes])
+df_pca$SalePrice <- df_encoded$SalePrice
+df_pca$Log_SalePrice <- df_encoded$Log_SalePrice
+View(df_pca)
+summary(df_pca)
+dim(df_pca)
+
+
+# +----------------+
+# | Regularización |
+# +----------------+
+
+
+
+# +---------------------------------------------------------------+
+# | Evaluar la precisión, robustez y capacidad de generalización  |
+# +---------------------------------------------------------------+
