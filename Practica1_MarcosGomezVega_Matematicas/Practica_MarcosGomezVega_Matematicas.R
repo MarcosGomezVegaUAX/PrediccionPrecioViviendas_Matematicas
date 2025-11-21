@@ -1,6 +1,7 @@
 # +----------------------+
 # | Carga de librerías   |
 # +----------------------+
+
 # install.packages(c("tidyverse",
 #                    "skimr",
 #                    "DataExplorer",
@@ -11,7 +12,8 @@
 #                    "dplyr",
 #                    "tidyr",
 #                    "stats",
-#                    "factoextra"))
+#                    "factoextra",
+#                    "glmnet"))
 library(tidyverse)
 library(readr)
 library(skimr)
@@ -23,19 +25,21 @@ library(dplyr)
 library(tidyr)
 library(stats)
 library(factoextra)
+library(glmnet)
+
 # +----------------------------------+
 # | Carga de datos y su inspección   |
 # +----------------------------------+
 
 df <- read_csv("PrediccionPrecioViviendas_Matematicas/train.csv")
-View(df)
+# View(df)
 str(df)
 summary(df)
 
 
 # Eliminar la columna 'Id' que no aporta información relevante para el análisis
 df <- df %>% select(-Id)
-View(df)
+# View(df)
 
 # +--------------------------------------+
 # | Limpieza y preparacion de los datos  |
@@ -104,7 +108,7 @@ df$GarageYrBlt <- ifelse(is.na(df$GarageYrBlt),
                          df$GarageYrBlt)
 
 df$GarageYrBlt <- as.integer(df$GarageYrBlt)
-View(df)
+# View(df)
 
 # ----------------------------------------------------------------------
 ### 4. Recalculo de Valores na
@@ -133,7 +137,7 @@ print(na_counts_restantes)
 df <- df %>%
   filter(if_all(all_of(na_counts_restantes$Variable), ~!is.na(.)))
 
-View(df)
+# View(df)
 
 # Verificamos que ya no hay NA
 na_counts_restantes <- contar_nas(df)
@@ -215,6 +219,7 @@ print(head(cor_saleprice_sorted[-1], 10))
 best_10_cor_vars <- names(head(cor_saleprice_sorted[-1], 10))
 print(best_10_cor_vars)
 # ------------------------------------------------------
+
 ### 4.Verificar si la relacion entre variables numericas y SalePrice es lineal
 # Graficos de dispersion de las 5 variables con mayor correlacion con SalePrice
 
@@ -296,7 +301,7 @@ variables_a_tratar <- c("OverallQual",
 for (var in variables_a_tratar) {
   df <- eliminar_outliers_iqr(df, var)
 }
-View(df)
+# View(df)
 
 # ------------------------------------------------------
 ### 6 Codficacion one-hot para variable cualitativas categoricas
@@ -330,7 +335,7 @@ list_one_hot_validated <- intersect(list_one_hot_vars, cual_vars)
 
 df[list_one_hot_validated] <- lapply(df[list_one_hot_validated], factor)
 
-View(df)
+# View(df)
 
 # Excluir variables con menos de 2 niveles después de la limpieza
 variables_a_excluir <- c()
@@ -369,7 +374,7 @@ print("Dimensiones del DataFrame procesado (sin variables cualitativas):")
 print(dim(df_processed))
 print("Dimensiones de la matriz dummy generada:")
 print(dim(dummy_matrix))
-View(df_encoded)
+# View(df_encoded)
 
 #------------------------------------------------------
 ### 7. Codificacion ordinal para variables cualitativas ordinales
@@ -416,7 +421,7 @@ for (var in list_ordinal_final) {
   df_encoded[[var]] <- as.numeric(df_encoded[[var]])
 
 }
-View(df_encoded)
+# View(df_encoded)
 
 #------------------------------------------------------
 ### 8. Estandarizamos toas las variables numericas
@@ -428,7 +433,7 @@ str(df_encoded)
 vars_a_estandarizar <- setdiff(names(df_encoded),
                                c("SalePrice", "Log_SalePrice"))
 df_encoded[vars_a_estandarizar] <- scale(df_encoded[vars_a_estandarizar])
-View(df_encoded)
+# View(df_encoded)
 summary(df_encoded)
 dim(df_encoded)
 
@@ -520,9 +525,12 @@ respca$sdev
 respca ~ sdev^2
 summary(respca)
 
+
 # Nos quedamos con los 90 primeros componentes principales
 # ya que estan muy dispersosn y la proporcion acumuluda de varianza
 # es de un 86.329%
+
+# ----------------------------------------------------------------------
 
 # 2. Visualización
 fviz_eig(respca)
@@ -534,15 +542,22 @@ fviz_contrib(respca, choice = "var") +
 fviz_contrib(respca, choice = "ind") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
 
+# ----------------------------------------------------------------------
+
 # 3. Selección de Componentes Principales para el entrenamiento
-num_componentes <- 90
+var_explained <- summary(respca)$importance[3, ]
+num_componentes <- min(which(var_explained >= 0.85))
+print(paste("Número de componentes principales seleccionados:",
+            num_componentes))
 
 df_pca_train <- as.data.frame(respca$x[, 1:num_componentes])
 df_pca_train$SalePrice <- df_train_final$SalePrice
 df_pca_train$Log_SalePrice <- df_train_final$Log_SalePrice
 
-View(df_pca_train)
+# View(df_pca_train)
 dim(df_pca_train)
+
+# ----------------------------------------------------------------------
 
 # 4. Transformación de los conjuntos de prueba y validación
 # respca contiene las "formulas" para crear los PC
@@ -572,16 +587,52 @@ print(dim(df_pca_test))
 print("Dimensiones de PCA (Validación):")
 print(dim(df_pca_val))
 
-View(df_pca_test)
-View(df_pca_val)
-View(df_pca_train)
+# View(df_pca_test)
+# View(df_pca_val)
+# View(df_pca_train)
 
 
-# +----------------+
-# | Regularización |
-# +----------------+
+# +-----------------------------------+
+# | Regresión Lineal Múltiple con PCA |
+# +-----------------------------------+
 
+# 1. Eentrenamiento del Modelo de Regresión Lineal Múltiple con PCA
+modelo_lm_pca <- lm(Log_SalePrice ~ ., data = df_pca_train)
 
+print("Modelo Ajustado con PCA:")
+print(summary(modelo_lm_pca))
+
+#----------------------------------------------
+# 2. Perdicción y Evaluación
+
+pred_train_pca <- predict(modelo_lm_pca, newdata = df_pca_train)
+pred_val_pca <- predict(modelo_lm_pca, newdata = df_pca_val)
+pred_test_pca <- predict(modelo_lm_pca, newdata = df_pca_test)
+
+# Función para calcular métricas de error
+rmse <- function(y_true, y_pred) sqrt(mean((y_true - y_pred)^2))
+mae <- function(y_true, y_pred) mean(abs(y_true - y_pred))
+r2 <- function(y_true, y_pred) cor(y_true, y_pred)^2
+
+#----------------------------------------------
+# 3. Resultados
+
+print("========================================")
+print("      MÉTRICAS DE RENDIMIENTO (PCA)")
+print("========================================")
+print("ENTRENAMIENTO:")
+print(paste("RMSE:",
+            round(rmse(df_pca_train$Log_SalePrice, pred_train_pca), 2)))
+print(paste("MAE: ", round(mae(df_pca_train$Log_SalePrice, pred_train_pca), 2)))
+print(paste("R²:  ", round(r2(df_pca_train$Log_SalePrice, pred_train_pca), 4)))
+print("VALIDACIÓN:")
+print(paste("RMSE:", round(rmse(df_pca_val$Log_SalePrice, pred_val_pca), 2)))
+print(paste("MAE: ", round(mae(df_pca_val$Log_SalePrice, pred_val_pca), 2)))
+print(paste("R²:  ", round(r2(df_pca_val$Log_SalePrice, pred_val_pca), 4)))
+print("TEST (conjunto de reserva):")
+print(paste("RMSE:", round(rmse(df_pca_test$Log_SalePrice, pred_test_pca), 2)))
+print(paste("MAE: ", round(mae(df_pca_test$Log_SalePrice, pred_test_pca), 2)))
+print(paste("R²:  ", round(r2(df_pca_test$Log_SalePrice, pred_test_pca), 4)))
 
 # +---------------------------------------------------------------+
 # | Evaluar la precisión, robustez y capacidad de generalización  |
