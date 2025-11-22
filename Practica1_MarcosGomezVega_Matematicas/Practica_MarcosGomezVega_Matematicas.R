@@ -63,7 +63,7 @@ contar_nas <- function(data) {
     summarise(across(everything(), ~sum(is.na(.)))) %>%
     pivot_longer(everything(), names_to = "Variable",
                  values_to = "NA_Count") %>%
-  filter(NA_Count > 0)
+    filter(NA_Count > 0)
 
   na_counts
 }
@@ -633,6 +633,209 @@ print("TEST (conjunto de reserva):")
 print(paste("RMSE:", round(rmse(df_pca_test$Log_SalePrice, pred_test_pca), 2)))
 print(paste("MAE: ", round(mae(df_pca_test$Log_SalePrice, pred_test_pca), 2)))
 print(paste("R²:  ", round(r2(df_pca_test$Log_SalePrice, pred_test_pca), 4)))
+
+
+# +-------------------------------------------+
+# | Funcion para Regresión con regularización |
+# +-------------------------------------------+
+
+regresion_con_regularizacion <- function(x_train, y_train,
+                                         alpha) {
+  set.seed(123)
+  cv <- cv.glmnet(x_train, y_train,
+                  alpha = alpha,
+                  nfolds = 15)
+  best_lambda <- cv$lambda.min
+
+  print(paste("Mejor lambda:", best_lambda))
+  modelo <- glmnet(x_train, y_train,
+                   alpha = alpha,
+                   lambda = best_lambda)
+  print("Modelo Ajustado:")
+  print(modelo)
+  return(list(modelo = modelo, best_lambda = best_lambda))
+}
+
+# + -----------------------------------+
+# | Regresión con regularización Lasso |
+# + -----------------------------------+
+
+# 1. Preparación de los datos para glmnet quitando las varibles objetivo
+x_train <- as.matrix(df_train_final %>% select(-SalePrice, -Log_SalePrice))
+y_train <- df_train_final$Log_SalePrice
+x_val <- as.matrix(df_val_final %>% select(-SalePrice, -Log_SalePrice))
+y_val <- df_val_final$Log_SalePrice
+x_test <- as.matrix(df_test_final %>% select(-SalePrice, -Log_SalePrice))
+y_test <- df_test_final$Log_SalePrice
+
+
+#-----------------------------------------------
+# 2. Creamos el modelo Lasso (alpha = 1)
+resultados_lasso <- regresion_con_regularizacion(x_train,
+                                                 y_train,
+                                                 alpha = 1)
+
+
+modelo_lasso <- resultados_lasso$modelo
+best_lambda_lasso <- resultados_lasso$best_lambda
+
+print("Modelo Lasso Ajustado:")
+print(modelo_lasso)
+
+#-----------------------------------------------
+# 3. Predicción y Evaluación del modelo Lasso
+pred_train_lasso <- predict(modelo_lasso, s = best_lambda_lasso,
+                            newx = x_train)
+
+pred_val_lasso <- predict(modelo_lasso, s = best_lambda_lasso,
+                          newx = x_val)
+
+pred_test_lasso <- predict(modelo_lasso, s = best_lambda_lasso,
+                           newx = x_test)
+
+#-----------------------------------------------
+# 4. Resultados
+print("========================================")
+print("      MÉTRICAS DE RENDIMIENTO (Lasso)")
+print("========================================")
+print("ENTRENAMIENTO:")
+print(paste("RMSE:",
+            round(rmse(y_train, pred_train_lasso), 2)))
+print(paste("MAE: ", round(mae(y_train, pred_train_lasso), 2)))
+print(paste("R²:  ", round(r2(y_train, pred_train_lasso), 4)))
+print("VALIDACIÓN:")
+print(paste("RMSE:", round(rmse(y_val, pred_val_lasso), 2)))
+print(paste("MAE: ", round(mae(y_val, pred_val_lasso), 2)))
+print(paste("R²:  ", round(r2(y_val, pred_val_lasso), 4)))
+print("TEST (conjunto de reserva):")
+print(paste("RMSE:", round(rmse(y_test, pred_test_lasso), 2)))
+print(paste("MAE: ", round(mae(y_test, pred_test_lasso), 2)))
+print(paste("R²:  ", round(r2(y_test, pred_test_lasso), 4)))
+
+# +--------------------------------+
+# | Regrsión Lineal Múltiple Ridge |
+# +--------------------------------+
+
+#1 . Creamos el modelo Ridge (alpha = 0)
+resultados_ridge <- regresion_con_regularizacion(x_train,
+                                                 y_train,
+                                                 alpha = 0)
+modelo_ridge <- resultados_ridge$modelo
+best_lambda_ridge <- resultados_ridge$best_lambda
+print("Modelo Ridge Ajustado:")
+print(modelo_ridge)
+
+#-----------------------------------------------
+# 2. Predicción y Evaluación del modelo Ridge
+pred_train_ridge <- predict(modelo_ridge, s = best_lambda_ridge,
+                            newx = x_train)
+
+pred_val_ridge <- predict(modelo_ridge, s = best_lambda_ridge,
+                          newx = x_val)
+
+pred_test_ridge <- predict(modelo_ridge, s = best_lambda_ridge,
+                           newx = x_test)
+
+#-----------------------------------------------
+# 3. Resultados
+print("========================================")
+print("      MÉTRICAS DE RENDIMIENTO (Ridge)")
+print("========================================")
+print("ENTRENAMIENTO:")
+print(paste("RMSE:", round(rmse(y_train, pred_train_ridge), 2)))
+print(paste("MAE: ", round(mae(y_train, pred_train_ridge), 2)))
+print(paste("R²:  ", round(r2(y_train, pred_train_ridge), 4)))
+print("VALIDACIÓN:")
+print(paste("RMSE:", round(rmse(y_val, pred_val_ridge), 2)))
+print(paste("MAE: ", round(mae(y_val, pred_val_ridge), 2)))
+print(paste("R²:  ", round(r2(y_val, pred_val_ridge), 4)))
+print("TEST (conjunto de reserva):")
+print(paste("RMSE:", round(rmse(y_test, pred_test_ridge), 2)))
+print(paste("MAE: ", round(mae(y_test, pred_test_ridge), 2)))
+print(paste("R²:  ", round(r2(y_test, pred_test_ridge), 4)))
+
+# +---------------------------------+
+# | Regresión Lasso y Ridge con PCA |
+# +---------------------------------+
+
+# 1. Preparación de los datos para glmnet con PCA
+x_train_pca <- as.matrix(df_pca_train %>% select(-SalePrice, -Log_SalePrice))
+y_train_pca <- df_pca_train$Log_SalePrice
+x_val_pca <- as.matrix(df_pca_val %>% select(-SalePrice, -Log_SalePrice))
+y_val_pca <- df_pca_val$Log_SalePrice
+x_test_pca <- as.matrix(df_pca_test %>% select(-SalePrice, -Log_SalePrice))
+y_test_pca <- df_pca_test$Log_SalePrice
+
+#----------------------------------------------
+# 2. Creamos el modelo Lasso con PCA (alpha = 1)
+resultados_lasso_pca <- regresion_con_regularizacion(x_train_pca,
+                                                     y_train_pca,
+                                                     alpha = 1)
+modelo_lasso_pca <- resultados_lasso_pca$modelo
+best_lambda_lasso_pca <- resultados_lasso_pca$best_lambda
+print("Modelo Lasso con PCA Ajustado:")
+print(modelo_lasso_pca)
+
+pred_train_lasso_pca <- predict(modelo_lasso_pca,
+                                s = best_lambda_lasso_pca,
+                                newx = x_train_pca)
+pred_val_lasso_pca <- predict(modelo_lasso_pca,
+                              s = best_lambda_lasso_pca,
+                              newx = x_val_pca)
+pred_test_lasso_pca <- predict(modelo_lasso_pca,
+                               s = best_lambda_lasso_pca,
+                               newx = x_test_pca)
+
+print("========================================")
+print("  MÉTRICAS DE RENDIMIENTO (Lasso con PCA)")
+print("========================================")
+print("ENTRENAMIENTO:")
+print(paste("RMSE:", round(rmse(y_train_pca, pred_train_lasso_pca), 2)))
+print(paste("MAE: ", round(mae(y_train_pca, pred_train_lasso_pca), 2)))
+print(paste("R²:  ", round(r2(y_train_pca, pred_train_lasso_pca), 4)))
+print("VALIDACIÓN:")
+print(paste("RMSE:", round(rmse(y_val_pca, pred_val_lasso_pca), 2)))
+print(paste("MAE: ", round(mae(y_val_pca, pred_val_lasso_pca), 2)))
+print(paste("R²:  ", round(r2(y_val_pca, pred_val_lasso_pca), 4)))
+print("TEST (conjunto de reserva):")
+print(paste("RMSE:", round(rmse(y_test_pca, pred_test_lasso_pca), 2)))
+print(paste("MAE: ", round(mae(y_test_pca, pred_test_lasso_pca), 2)))
+print(paste("R²:  ", round(r2(y_test_pca, pred_test_lasso_pca), 4)))
+
+#----------------------------------------------
+# 3. Creamos el modelo Ridge con PCA (alpha = 0)
+resultados_ridge_pca <- regresion_con_regularizacion(x_train_pca,
+                                                     y_train_pca,
+                                                     alpha = 0)
+modelo_ridge_pca <- resultados_ridge_pca$modelo
+best_lambda_ridge_pca <- resultados_ridge_pca$best_lambda
+print("Modelo Ridge con PCA Ajustado:")
+print(modelo_ridge_pca)
+
+pred_train_ridge_pca <- predict(modelo_ridge_pca,
+                                s = best_lambda_ridge_pca,
+                                newx = x_train_pca)
+pred_val_ridge_pca <- predict(modelo_ridge_pca,
+                              s = best_lambda_ridge_pca,
+                              newx = x_val_pca)
+pred_test_ridge_pca <- predict(modelo_ridge_pca,
+                               s = best_lambda_ridge_pca,
+                               newx = x_test_pca)
+
+print("========================================")
+print("  MÉTRICAS DE RENDIMIENTO (Ridge con PCA)")
+print("ENTRENAMIENTO:")
+print(paste("RMSE:", round(rmse(y_train_pca, pred_train_ridge_pca), 2)))
+print(paste("MAE: ", round(mae(y_train_pca, pred_train_ridge_pca), 2)))
+print(paste("R²:  ", round(r2(y_train_pca, pred_train_ridge_pca), 4)))
+print("VALIDACIÓN:")
+print(paste("RMSE:", round(rmse(y_val_pca, pred_val_ridge_pca), 2)))
+print(paste("MAE: ", round(mae(y_val_pca, pred_val_ridge_pca), 2)))
+print(paste("R²:  ", round(r2(y_val_pca, pred_val_ridge_pca), 4)))
+print("TEST (conjunto de reserva):")
+print(paste("RMSE:", round(rmse(y_test_pca, pred_test_ridge_pca), 2)))
+print(paste("MAE: ", round(mae(y_test_pca, pred_test_ridge_pca), 2)))
+print(paste("R²:  ", round(r2(y_test_pca, pred_test_ridge_pca), 4)))
 
 # +---------------------------------------------------------------+
 # | Evaluar la precisión, robustez y capacidad de generalización  |
