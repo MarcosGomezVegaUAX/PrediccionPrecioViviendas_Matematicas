@@ -32,14 +32,53 @@ library(glmnet)
 # +----------------------------------+
 
 df <- read_csv("PrediccionPrecioViviendas_Matematicas/train.csv")
-# View(df)
+View(df)
 str(df)
 summary(df)
 
 
 # Eliminar la columna 'Id' que no aporta información relevante para el análisis
 df <- df %>% select(-Id)
-# View(df)
+View(df)
+
+# Analisis variable Objetivo 'SalePrice'
+summary(df$SalePrice)
+
+# Histograma de 'SalePrice'
+hist(df$SalePrice, main = "Histograma de SalePrice",
+     xlab = "SalePrice",
+     col = "lightblue",
+     border = "black")
+
+# Boxplot para detectar outliers en 'SalePrice'
+boxplot(df$SalePrice, main = "Boxplot de SalePrice",
+        ylab = "SalePrice",
+        col = "green")
+
+# Densidad de 'SalePrice'
+plot(density(df$SalePrice), main = "Densidad de SalePrice",
+     xlab = "SalePrice",
+     col = "blue",
+     lwd = 2)
+
+
+# Como SalePrice esta sesgado a la derecha, aplicamos logaritmo
+df$Log_SalePrice <- log(df$SalePrice)
+summary(df$Log_SalePrice)
+# Histograma de 'Log_SalePrice'
+hist(df$Log_SalePrice, main = "Histograma de Log_SalePrice",
+     xlab = "Log_SalePrice",
+     col = "lightcoral",
+     border = "black")
+# Boxplot para detectar outliers en 'Log_SalePrice'
+boxplot(df$Log_SalePrice, main = "Boxplot de Log_SalePrice",
+        ylab = "Log_SalePrice",
+        col = "orange")
+# Densidad de 'Log_SalePrice'
+plot(density(df$Log_SalePrice), main = "Densidad de Log_SalePrice",
+     xlab = "Log_SalePrice",
+     col = "red",
+     lwd = 2)
 
 # +--------------------------------------+
 # | Limpieza y preparacion de los datos  |
@@ -108,7 +147,7 @@ df$GarageYrBlt <- ifelse(is.na(df$GarageYrBlt),
                          df$GarageYrBlt)
 
 df$GarageYrBlt <- as.integer(df$GarageYrBlt)
-# View(df)
+View(df)
 
 # ----------------------------------------------------------------------
 ### 4. Recalculo de Valores na
@@ -137,7 +176,7 @@ print(na_counts_restantes)
 df <- df %>%
   filter(if_all(all_of(na_counts_restantes$Variable), ~!is.na(.)))
 
-# View(df)
+View(df)
 
 # Verificamos que ya no hay NA
 na_counts_restantes <- contar_nas(df)
@@ -160,47 +199,7 @@ if (num_duplicados > 0) {
 # | Análisis Exploratorio de Datos (EDA) |
 # +--------------------------------------+
 
-# 1. Analisis variable Objetivo 'SalePrice'
-summary(df$SalePrice)
-
-# Histograma de 'SalePrice'
-hist(df$SalePrice, main = "Histograma de SalePrice",
-     xlab = "SalePrice",
-     col = "lightblue",
-     border = "black")
-
-# Boxplot para detectar outliers en 'SalePrice'
-boxplot(df$SalePrice, main = "Boxplot de SalePrice",
-        ylab = "SalePrice",
-        col = "green")
-
-# Densidad de 'SalePrice'
-plot(density(df$SalePrice), main = "Densidad de SalePrice",
-     xlab = "SalePrice",
-     col = "blue",
-     lwd = 2)
-
-# ------------------------------------------------------
-### 2. Como SalePrice esta sesgado a la derecha, aplicamos logaritmo
-df$Log_SalePrice <- log(df$SalePrice)
-summary(df$Log_SalePrice)
-# Histograma de 'Log_SalePrice'
-hist(df$Log_SalePrice, main = "Histograma de Log_SalePrice",
-     xlab = "Log_SalePrice",
-     col = "lightcoral",
-     border = "black")
-# Boxplot para detectar outliers en 'Log_SalePrice'
-boxplot(df$Log_SalePrice, main = "Boxplot de Log_SalePrice",
-        ylab = "Log_SalePrice",
-        col = "orange")
-# Densidad de 'Log_SalePrice'
-plot(density(df$Log_SalePrice), main = "Densidad de Log_SalePrice",
-     xlab = "Log_SalePrice",
-     col = "red",
-     lwd = 2)
-
-# ------------------------------------------------------
-### 3. Análisis de Correlación entre Variables Numéricas
+### 1. Análisis de Correlación entre Variables Numéricas
 
 print(num_vars)
 
@@ -220,7 +219,7 @@ best_10_cor_vars <- names(head(cor_saleprice_sorted[-1], 10))
 print(best_10_cor_vars)
 # ------------------------------------------------------
 
-### 4.Verificar si la relacion entre variables numericas y SalePrice es lineal
+### 2.Verificar si la relacion entre variables numericas y SalePrice es lineal
 # Graficos de dispersion de las 5 variables con mayor correlacion con SalePrice
 
 # Diagrama de dispersion de OverallQual vs SalePrice
@@ -267,7 +266,7 @@ plot(df[[best_10_cor_vars[5]]], df$SalePrice,
 # se observan algunos puntos atipicos que pueden afectar la linealidad
 
 #------------------------------------------------------
-### 5. Tratamiento de Outliers en Variables Numéricas
+### 3. Tratamiento de Outliers en Variables Numéricas
 
 # Eliminamos los puntos atipicos de las variables con mayor correlacion
 # Definimos una función para eliminar outliers el rango intercuartílico (IQR)
@@ -301,10 +300,10 @@ variables_a_tratar <- c("OverallQual",
 for (var in variables_a_tratar) {
   df <- eliminar_outliers_iqr(df, var)
 }
-# View(df)
+View(df)
 
 # ------------------------------------------------------
-### 6 Codficacion one-hot para variable cualitativas categoricas
+### 4 Codficacion one-hot para variable cualitativas categoricas
 print(cual_vars)
 
 list_one_hot_vars <- c("MSZoning",
@@ -335,7 +334,7 @@ list_one_hot_validated <- intersect(list_one_hot_vars, cual_vars)
 
 df[list_one_hot_validated] <- lapply(df[list_one_hot_validated], factor)
 
-# View(df)
+View(df)
 
 # Excluir variables con menos de 2 niveles después de la limpieza
 variables_a_excluir <- c()
@@ -374,10 +373,10 @@ print("Dimensiones del DataFrame procesado (sin variables cualitativas):")
 print(dim(df_processed))
 print("Dimensiones de la matriz dummy generada:")
 print(dim(dummy_matrix))
-# View(df_encoded)
+View(df_encoded)
 
 #------------------------------------------------------
-### 7. Codificacion ordinal para variables cualitativas ordinales
+### 5. Codificacion ordinal para variables cualitativas ordinales
 
 list_ordinal_codification <- setdiff(cual_vars, list_one_hot_final)
 print("Variables Categóricas Ordinales (Requieren Mapeo Numérico Manual):\n")
@@ -421,10 +420,10 @@ for (var in list_ordinal_final) {
   df_encoded[[var]] <- as.numeric(df_encoded[[var]])
 
 }
-# View(df_encoded)
+View(df_encoded)
 
 #------------------------------------------------------
-### 8. Estandarizamos toas las variables numericas
+### 6. Estandarizamos toas las variables numericas
 
 # Comprobar que todo el dataframe es numerico
 str(df_encoded)
@@ -433,7 +432,7 @@ str(df_encoded)
 vars_a_estandarizar <- setdiff(names(df_encoded),
                                c("SalePrice", "Log_SalePrice"))
 df_encoded[vars_a_estandarizar] <- scale(df_encoded[vars_a_estandarizar])
-# View(df_encoded)
+View(df_encoded)
 summary(df_encoded)
 dim(df_encoded)
 
@@ -534,7 +533,6 @@ summary(respca)
 
 # 2. Visualización
 fviz_eig(respca)
-fviz_screeplot(respca)
 
 # Contribución de las variables a los componentes principales
 fviz_contrib(respca, choice = "var") +
@@ -554,7 +552,7 @@ df_pca_train <- as.data.frame(respca$x[, 1:num_componentes])
 df_pca_train$SalePrice <- df_train_final$SalePrice
 df_pca_train$Log_SalePrice <- df_train_final$Log_SalePrice
 
-# View(df_pca_train)
+View(df_pca_train)
 dim(df_pca_train)
 
 # ----------------------------------------------------------------------
@@ -587,9 +585,9 @@ print(dim(df_pca_test))
 print("Dimensiones de PCA (Validación):")
 print(dim(df_pca_val))
 
-# View(df_pca_test)
-# View(df_pca_val)
-# View(df_pca_train)
+View(df_pca_test)
+View(df_pca_val)
+View(df_pca_train)
 
 
 # +-----------------------------------+
@@ -614,26 +612,6 @@ rmse <- function(y_true, y_pred) sqrt(mean((y_true - y_pred)^2))
 mae <- function(y_true, y_pred) mean(abs(y_true - y_pred))
 r2 <- function(y_true, y_pred) cor(y_true, y_pred)^2
 
-#----------------------------------------------
-# 3. Resultados
-
-print("========================================")
-print("      MÉTRICAS DE RENDIMIENTO (PCA)")
-print("========================================")
-print("ENTRENAMIENTO:")
-print(paste("RMSE:",
-            round(rmse(df_pca_train$Log_SalePrice, pred_train_pca), 2)))
-print(paste("MAE: ", round(mae(df_pca_train$Log_SalePrice, pred_train_pca), 2)))
-print(paste("R²:  ", round(r2(df_pca_train$Log_SalePrice, pred_train_pca), 4)))
-print("VALIDACIÓN:")
-print(paste("RMSE:", round(rmse(df_pca_val$Log_SalePrice, pred_val_pca), 2)))
-print(paste("MAE: ", round(mae(df_pca_val$Log_SalePrice, pred_val_pca), 2)))
-print(paste("R²:  ", round(r2(df_pca_val$Log_SalePrice, pred_val_pca), 4)))
-print("TEST (conjunto de reserva):")
-print(paste("RMSE:", round(rmse(df_pca_test$Log_SalePrice, pred_test_pca), 2)))
-print(paste("MAE: ", round(mae(df_pca_test$Log_SalePrice, pred_test_pca), 2)))
-print(paste("R²:  ", round(r2(df_pca_test$Log_SalePrice, pred_test_pca), 4)))
-
 
 # +-------------------------------------------+
 # | Funcion para Regresión con regularización |
@@ -653,7 +631,7 @@ regresion_con_regularizacion <- function(x_train, y_train,
                    lambda = best_lambda)
   print("Modelo Ajustado:")
   print(modelo)
-  return(list(modelo = modelo, best_lambda = best_lambda))
+  list(modelo = modelo, best_lambda = best_lambda)
 }
 
 # + -----------------------------------+
@@ -693,24 +671,6 @@ pred_val_lasso <- predict(modelo_lasso, s = best_lambda_lasso,
 pred_test_lasso <- predict(modelo_lasso, s = best_lambda_lasso,
                            newx = x_test)
 
-#-----------------------------------------------
-# 4. Resultados
-print("========================================")
-print("      MÉTRICAS DE RENDIMIENTO (Lasso)")
-print("========================================")
-print("ENTRENAMIENTO:")
-print(paste("RMSE:",
-            round(rmse(y_train, pred_train_lasso), 2)))
-print(paste("MAE: ", round(mae(y_train, pred_train_lasso), 2)))
-print(paste("R²:  ", round(r2(y_train, pred_train_lasso), 4)))
-print("VALIDACIÓN:")
-print(paste("RMSE:", round(rmse(y_val, pred_val_lasso), 2)))
-print(paste("MAE: ", round(mae(y_val, pred_val_lasso), 2)))
-print(paste("R²:  ", round(r2(y_val, pred_val_lasso), 4)))
-print("TEST (conjunto de reserva):")
-print(paste("RMSE:", round(rmse(y_test, pred_test_lasso), 2)))
-print(paste("MAE: ", round(mae(y_test, pred_test_lasso), 2)))
-print(paste("R²:  ", round(r2(y_test, pred_test_lasso), 4)))
 
 # +--------------------------------+
 # | Regrsión Lineal Múltiple Ridge |
@@ -736,23 +696,6 @@ pred_val_ridge <- predict(modelo_ridge, s = best_lambda_ridge,
 pred_test_ridge <- predict(modelo_ridge, s = best_lambda_ridge,
                            newx = x_test)
 
-#-----------------------------------------------
-# 3. Resultados
-print("========================================")
-print("      MÉTRICAS DE RENDIMIENTO (Ridge)")
-print("========================================")
-print("ENTRENAMIENTO:")
-print(paste("RMSE:", round(rmse(y_train, pred_train_ridge), 2)))
-print(paste("MAE: ", round(mae(y_train, pred_train_ridge), 2)))
-print(paste("R²:  ", round(r2(y_train, pred_train_ridge), 4)))
-print("VALIDACIÓN:")
-print(paste("RMSE:", round(rmse(y_val, pred_val_ridge), 2)))
-print(paste("MAE: ", round(mae(y_val, pred_val_ridge), 2)))
-print(paste("R²:  ", round(r2(y_val, pred_val_ridge), 4)))
-print("TEST (conjunto de reserva):")
-print(paste("RMSE:", round(rmse(y_test, pred_test_ridge), 2)))
-print(paste("MAE: ", round(mae(y_test, pred_test_ridge), 2)))
-print(paste("R²:  ", round(r2(y_test, pred_test_ridge), 4)))
 
 # +---------------------------------+
 # | Regresión Lasso y Ridge con PCA |
@@ -786,21 +729,6 @@ pred_test_lasso_pca <- predict(modelo_lasso_pca,
                                s = best_lambda_lasso_pca,
                                newx = x_test_pca)
 
-print("========================================")
-print("  MÉTRICAS DE RENDIMIENTO (Lasso con PCA)")
-print("========================================")
-print("ENTRENAMIENTO:")
-print(paste("RMSE:", round(rmse(y_train_pca, pred_train_lasso_pca), 2)))
-print(paste("MAE: ", round(mae(y_train_pca, pred_train_lasso_pca), 2)))
-print(paste("R²:  ", round(r2(y_train_pca, pred_train_lasso_pca), 4)))
-print("VALIDACIÓN:")
-print(paste("RMSE:", round(rmse(y_val_pca, pred_val_lasso_pca), 2)))
-print(paste("MAE: ", round(mae(y_val_pca, pred_val_lasso_pca), 2)))
-print(paste("R²:  ", round(r2(y_val_pca, pred_val_lasso_pca), 4)))
-print("TEST (conjunto de reserva):")
-print(paste("RMSE:", round(rmse(y_test_pca, pred_test_lasso_pca), 2)))
-print(paste("MAE: ", round(mae(y_test_pca, pred_test_lasso_pca), 2)))
-print(paste("R²:  ", round(r2(y_test_pca, pred_test_lasso_pca), 4)))
 
 #----------------------------------------------
 # 3. Creamos el modelo Ridge con PCA (alpha = 0)
@@ -822,21 +750,180 @@ pred_test_ridge_pca <- predict(modelo_ridge_pca,
                                s = best_lambda_ridge_pca,
                                newx = x_test_pca)
 
-print("========================================")
-print("  MÉTRICAS DE RENDIMIENTO (Ridge con PCA)")
-print("ENTRENAMIENTO:")
-print(paste("RMSE:", round(rmse(y_train_pca, pred_train_ridge_pca), 2)))
-print(paste("MAE: ", round(mae(y_train_pca, pred_train_ridge_pca), 2)))
-print(paste("R²:  ", round(r2(y_train_pca, pred_train_ridge_pca), 4)))
-print("VALIDACIÓN:")
-print(paste("RMSE:", round(rmse(y_val_pca, pred_val_ridge_pca), 2)))
-print(paste("MAE: ", round(mae(y_val_pca, pred_val_ridge_pca), 2)))
-print(paste("R²:  ", round(r2(y_val_pca, pred_val_ridge_pca), 4)))
-print("TEST (conjunto de reserva):")
-print(paste("RMSE:", round(rmse(y_test_pca, pred_test_ridge_pca), 2)))
-print(paste("MAE: ", round(mae(y_test_pca, pred_test_ridge_pca), 2)))
-print(paste("R²:  ", round(r2(y_test_pca, pred_test_ridge_pca), 4)))
 
 # +---------------------------------------------------------------+
 # | Evaluar la precisión, robustez y capacidad de generalización  |
 # +---------------------------------------------------------------+
+
+# Creo una tabla comparativa de resultados de los diferentes modelos
+# con la varible objetivo Log_SalePrice
+resultados_modelos <- data.frame(
+  Modelo = c("Lineal con PCA",
+             "Lasso (L1)",
+             "Ridge (L2)",
+             "Lasso con PCA",
+             "Ridge con PCA"),
+  MAE_E = c(
+    round(mae(df_pca_train$Log_SalePrice, pred_train_pca), 2),
+    round(mae(y_train, pred_train_lasso), 2),
+    round(mae(y_train, pred_train_ridge), 2),
+    round(mae(y_train_pca, pred_train_lasso_pca), 2),
+    round(mae(y_train_pca, pred_train_ridge_pca), 2)
+  ),
+  MAE_V = c(
+    round(mae(df_pca_val$Log_SalePrice, pred_val_pca), 2),
+    round(mae(y_val, pred_val_lasso), 2),
+    round(mae(y_val, pred_val_ridge), 2),
+    round(mae(y_val_pca, pred_val_lasso_pca), 2),
+    round(mae(y_val_pca, pred_val_ridge_pca), 2)
+  ),
+  MAE_T = c(
+    round(mae(df_pca_test$Log_SalePrice, pred_test_pca), 2),
+    round(mae(y_test, pred_test_lasso), 2),
+    round(mae(y_test, pred_test_ridge), 2),
+    round(mae(y_test_pca, pred_test_lasso_pca), 2),
+    round(mae(y_test_pca, pred_test_ridge_pca), 2)
+  ),
+  RMSE_E = c(
+    round(rmse(df_pca_train$Log_SalePrice, pred_train_pca), 2),
+    round(rmse(y_train, pred_train_lasso), 2),
+    round(rmse(y_train, pred_train_ridge), 2),
+    round(rmse(y_train_pca, pred_train_lasso_pca), 2),
+    round(rmse(y_train_pca, pred_train_ridge_pca), 2)
+  ),
+  RMSE_V = c(
+    round(rmse(df_pca_val$Log_SalePrice, pred_val_pca), 2),
+    round(rmse(y_val, pred_val_lasso), 2),
+    round(rmse(y_val, pred_val_ridge), 2),
+    round(rmse(y_val_pca, pred_val_lasso_pca), 2),
+    round(rmse(y_val_pca, pred_val_ridge_pca), 2)
+  ),
+  RMSE_T = c(
+    round(rmse(df_pca_test$Log_SalePrice, pred_test_pca), 2),
+    round(rmse(y_test, pred_test_lasso), 2),
+    round(rmse(y_test, pred_test_ridge), 2),
+    round(rmse(y_test_pca, pred_test_lasso_pca), 2),
+    round(rmse(y_test_pca, pred_test_ridge_pca), 2)
+  ),
+  R2_E = c(
+    round(r2(df_pca_train$Log_SalePrice, pred_train_pca), 4),
+    round(r2(y_train, pred_train_lasso), 4),
+    round(r2(y_train, pred_train_ridge), 4),
+    round(r2(y_train_pca, pred_train_lasso_pca), 4),
+    round(r2(y_train_pca, pred_train_ridge_pca), 4)
+  ),
+  R2_V = c(
+    round(r2(df_pca_val$Log_SalePrice, pred_val_pca), 4),
+    round(r2(y_val, pred_val_lasso), 4),
+    round(r2(y_val, pred_val_ridge), 4),
+    round(r2(y_val_pca, pred_val_lasso_pca), 4),
+    round(r2(y_val_pca, pred_val_ridge_pca), 4)
+  ),
+  R2_T = c(
+    round(r2(df_pca_test$Log_SalePrice, pred_test_pca), 4),
+    round(r2(y_test, pred_test_lasso), 4),
+    round(r2(y_test, pred_test_ridge), 4),
+    round(r2(y_test_pca, pred_test_lasso_pca), 4),
+    round(r2(y_test_pca, pred_test_ridge_pca), 4)
+  )
+)
+
+print("========================================")
+print("      COMPARATIVA DE MODELOS")
+print("========================================")
+print(resultados_modelos)
+
+# ---------------------------------------------------------------
+# 2. Transfomrar a la escala originial de SalePrice
+pred_train_lm_orig <- exp(pred_train_pca)
+pred_val_lm_orig <- exp(pred_val_pca)
+pred_test_lm_orig <- exp(pred_test_pca)
+
+pred_train_lasso_orig <- exp(pred_train_lasso)
+pred_val_lasso_orig <- exp(pred_val_lasso)
+pred_test_lasso_orig <- exp(pred_test_lasso)
+
+pred_train_ridge_orig <- exp(pred_train_ridge)
+pred_val_ridge_orig <- exp(pred_val_ridge)
+pred_test_ridge_orig <- exp(pred_test_ridge)
+
+pred_train_lasso_pca_orig <- exp(pred_train_lasso_pca)
+pred_val_lasso_pca_orig <- exp(pred_val_lasso_pca)
+pred_test_lasso_pca_orig <- exp(pred_test_lasso_pca)
+
+pred_train_ridge_pca_orig <- exp(pred_train_ridge_pca)
+pred_val_ridge_pca_orig <- exp(pred_val_ridge_pca)
+pred_test_ridge_pca_orig <- exp(pred_test_ridge_pca)
+
+
+y_train_orig <- df_train_final$SalePrice
+y_val_orig <- df_val_final$SalePrice
+y_test_orig <- df_test_final$SalePrice
+
+
+
+resultados_modelos_orig <- data.frame(
+  Modelo = c("Lineal con PCA",
+             "Lasso (L1)",
+             "Ridge (L2)",
+             "Lasso con PCA",
+             "Ridge con PCA"),
+  MAE_E = c(round(mae(y_train_orig, pred_train_lm_orig), 0),
+            round(mae(y_train_orig, pred_train_lasso_orig), 0),
+            round(mae(y_train_orig, pred_train_ridge_orig), 0),
+            round(mae(y_train_orig, pred_train_lasso_pca_orig), 0),
+            round(mae(y_train_orig, pred_train_ridge_pca_orig), 0)),
+
+  MAE_V = c(round(mae(y_val_orig, pred_val_lm_orig), 0),
+            round(mae(y_val_orig, pred_val_lasso_orig), 0),
+            round(mae(y_val_orig, pred_val_ridge_orig), 0),
+            round(mae(y_val_orig, pred_val_lasso_pca_orig), 0),
+            round(mae(y_val_orig, pred_val_ridge_pca_orig), 0)),
+  
+  MAE_T = c(round(mae(y_test_orig, pred_test_lm_orig), 0),
+            round(mae(y_test_orig, pred_test_lasso_orig), 0),
+            round(mae(y_test_orig, pred_test_ridge_orig), 0),
+            round(mae(y_test_orig, pred_test_lasso_pca_orig), 0),
+            round(mae(y_test_orig, pred_test_ridge_pca_orig), 0)),
+
+  RMSE_E = c(round(rmse(y_train_orig, pred_train_lm_orig), 0),
+             round(rmse(y_train_orig, pred_train_lasso_orig), 0),
+             round(rmse(y_train_orig, pred_train_ridge_orig), 0),
+             round(rmse(y_train_orig, pred_train_lasso_pca_orig), 0),
+             round(rmse(y_train_orig, pred_train_ridge_pca_orig), 0)),
+
+  RMSE_V = c(round(rmse(y_val_orig, pred_val_lm_orig), 0),
+             round(rmse(y_val_orig, pred_val_lasso_orig), 0),
+             round(rmse(y_val_orig, pred_val_ridge_orig), 0),
+             round(rmse(y_val_orig, pred_val_lasso_pca_orig), 0),
+             round(rmse(y_val_orig, pred_val_ridge_pca_orig), 0)),
+
+  RMSE_T = c(round(rmse(y_test_orig, pred_test_lm_orig), 0),
+             round(rmse(y_test_orig, pred_test_lasso_orig), 0),
+             round(rmse(y_test_orig, pred_test_ridge_orig), 0),
+             round(rmse(y_test_orig, pred_test_lasso_pca_orig), 0),
+             round(rmse(y_test_orig, pred_test_ridge_pca_orig), 0)),
+
+  R2_E = c(round(r2(y_train_orig, pred_train_lm_orig), 4),
+           round(r2(y_train_orig, pred_train_lasso_orig), 4),
+           round(r2(y_train_orig, pred_train_ridge_orig), 4),
+           round(r2(y_train_orig, pred_train_lasso_pca_orig), 4),
+           round(r2(y_train_orig, pred_train_ridge_pca_orig), 4)),
+
+  R2_V = c(round(r2(y_val_orig, pred_val_lm_orig), 4),
+           round(r2(y_val_orig, pred_val_lasso_orig), 4),
+           round(r2(y_val_orig, pred_val_ridge_orig), 4),
+           round(r2(y_val_orig, pred_val_lasso_pca_orig), 4),
+           round(r2(y_val_orig, pred_val_ridge_pca_orig), 4)),
+
+  R2_T = c(round(r2(y_test_orig, pred_test_lm_orig), 4),
+           round(r2(y_test_orig, pred_test_lasso_orig), 4),
+           round(r2(y_test_orig, pred_test_ridge_orig), 4),
+           round(r2(y_test_orig, pred_test_lasso_pca_orig), 4),
+           round(r2(y_test_orig, pred_test_ridge_pca_orig), 4))
+)
+
+print("========================================")
+print(" COMPARATIVA DE MODELOS (Escala Original)")
+print("========================================")
+print(resultados_modelos_orig)
