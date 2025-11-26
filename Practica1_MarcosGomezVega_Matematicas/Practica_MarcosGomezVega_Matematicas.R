@@ -139,15 +139,10 @@ df[variables_a_imputar] <- lapply(df[variables_a_imputar], function(columna) {
   ifelse(is.na(columna), "No", columna)
 })
 
-# Imputación para 'GarageYrBlt' con la media de la columna.
-media_entera_garaje <- round(mean(df$GarageYrBlt, na.rm = TRUE))
-
-df$GarageYrBlt <- ifelse(is.na(df$GarageYrBlt),
-                         media_entera_garaje,
-                         df$GarageYrBlt)
-
-df$GarageYrBlt <- as.integer(df$GarageYrBlt)
-View(df)
+#Imputar los valores de GarageYrBlt con 0 ya que indica que no tiene garaje
+if ("GarageYrBlt" %in% num_vars) {
+  df$GarageYrBlt <- ifelse(is.na(df$GarageYrBlt), 0, df$GarageYrBlt)
+}
 
 # ----------------------------------------------------------------------
 ### 4. Recalculo de Valores na
@@ -157,24 +152,16 @@ na_counts_restantes <- contar_nas(df)
 print("Variables con valores faltantes (NA_Count > 0):")
 print(na_counts_restantes)
 
-# ------------------------------------------------------
-### 5. Sustituimos variables con muchas lineas
-
-# Sustituimos las lineas de LotFrontage que sean NA por la media
-media_lotfrontage <- round(mean(df$LotFrontage, na.rm = TRUE))
-df$LotFrontage <- ifelse(is.na(df$LotFrontage),
-                         media_lotfrontage,
-                         df$LotFrontage)
-
-na_counts_restantes <- contar_nas(df)
-
-print("Variables con valores faltantes (NA_Count > 0):")
-print(na_counts_restantes)
 
 # ----------------------------------------------------------------------
-### 6. Eliminacción de las varibles restantes con Na ya que son fallos
+### 5. Eliminacción de las varibles restantes con Na ya que son fallos
+
+# Miramos las filas que tengan NA menos GarageYrBlt y LotFrontage
+# que seran imputados con la media despues de la division de los datos
+varible_elminar <- setdiff(na_counts_restantes$Variable,
+                           c("GarageYrBlt", "LotFrontage"))
 df <- df %>%
-  filter(if_all(all_of(na_counts_restantes$Variable), ~!is.na(.)))
+  filter(if_all(all_of(varible_elminar), ~!is.na(.)))
 
 View(df)
 
@@ -185,7 +172,7 @@ print("Variables con valores faltantes (NA_Count > 0):")
 print(na_counts_restantes)
 
 # ----------------------------------------------------------------------
-### 7. Detección de Variables Duplicadas
+### 6. Detección de Variables Duplicadas
 
 num_duplicados <- sum(duplicated(df))
 
@@ -469,6 +456,23 @@ print("Dimensiones del conjunto de prueba:")
 print(dim(test_data))
 print("Dimensiones del conjunto de validación:")
 print(dim(val_data))
+
+# ------------------------------------------------------
+### 2. Imputación de Valores Faltantes (NA) en Conjuntos de Datos
+# Sustituimos las lineas de LotFrontage que sean NA por la media
+media_lotfrontage <- round(mean(train_data$LotFrontage, na.rm = TRUE))
+train_data$LotFrontage <- ifelse(is.na(train_data$LotFrontage),
+                                 media_lotfrontage,
+                                 train_data$LotFrontage)
+
+test_data$LotFrontage <- ifelse(is.na(test_data$LotFrontage),
+                                media_lotfrontage,
+                                test_data$LotFrontage)
+val_data$LotFrontage <- ifelse(is.na(val_data$LotFrontage),
+                               media_lotfrontage,
+                               val_data$LotFrontage)
+
+
 
 # +-----------------------------------------------------------------+
 # | Filtro de Variables con Varianza Cero (Constantes) antes de PCA |
@@ -879,7 +883,7 @@ resultados_modelos_orig <- data.frame(
             round(mae(y_val_orig, pred_val_ridge_orig), 0),
             round(mae(y_val_orig, pred_val_lasso_pca_orig), 0),
             round(mae(y_val_orig, pred_val_ridge_pca_orig), 0)),
-  
+
   MAE_T = c(round(mae(y_test_orig, pred_test_lm_orig), 0),
             round(mae(y_test_orig, pred_test_lasso_orig), 0),
             round(mae(y_test_orig, pred_test_ridge_orig), 0),
