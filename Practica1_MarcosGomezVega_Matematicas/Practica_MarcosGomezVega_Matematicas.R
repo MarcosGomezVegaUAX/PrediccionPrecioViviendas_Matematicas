@@ -81,7 +81,7 @@ plot(density(df$Log_SalePrice), main = "Densidad de Log_SalePrice",
      lwd = 2)
 
 # +--------------------------------------+
-# | Limpieza y preparacion de los datos  |
+# | Análisis Exploratorio de Datos (EDA) |
 # +--------------------------------------+
 
 ### 1. Identificación de Tipos de Variables
@@ -94,99 +94,8 @@ print(num_vars)
 print("Variables Cualitativas (cual_vars):")
 print(cual_vars)
 
-# ----------------------------------------------------------------------
-### 2. Conteo y Preparación de Valores Faltantes (NA)
-
-contar_nas <- function(data) {
-  na_counts <- data %>%
-    summarise(across(everything(), ~sum(is.na(.)))) %>%
-    pivot_longer(everything(), names_to = "Variable",
-                 values_to = "NA_Count") %>%
-    filter(NA_Count > 0)
-
-  na_counts
-}
-
-na_counts_iniciales <- contar_nas(df)
-
-print("Variables con valores faltantes (NA_Count > 0):")
-print(na_counts_iniciales)
-
-# ----------------------------------------------------------------------
-### 3. Imputación Estratégica de Ausencia (NA -> "No" o 0)
-
-# Definir la lista de variables cualitativas donde NA significa "No Aplica".
-variables_ausencia <- c(
-  "Alley",        # Acceso por callejón
-  "BsmtQual",     # Calidad del sótano
-  "BsmtCond",     # Condición del sótano
-  "BsmtExposure", # Exposición del sótano
-  "BsmtFinType1", # Tipo de acabado 1 del sótano
-  "BsmtFinType2", # Tipo de acabado 2 del sótano
-  "GarageType",   # Tipo de garaje
-  "GarageFinish", # Acabado interior del garaje
-  "GarageQual",   # Calidad del garaje
-  "GarageCond",   # Condición del garaje
-  "PoolQC",       # Calidad de la piscina
-  "Fence",        # Calidad de la cerca
-  "FireplaceQu",  # Calidad de la chimenea
-  "MiscFeature"   # Característica miscelánea
-)
-
-variables_a_imputar <- intersect(variables_ausencia, cual_vars)
-
-df[variables_a_imputar] <- lapply(df[variables_a_imputar], function(columna) {
-  ifelse(is.na(columna), "No", columna)
-})
-
-#Imputar los valores de GarageYrBlt con 0 ya que indica que no tiene garaje
-if ("GarageYrBlt" %in% num_vars) {
-  df$GarageYrBlt <- ifelse(is.na(df$GarageYrBlt), 0, df$GarageYrBlt)
-}
-
-# ----------------------------------------------------------------------
-### 4. Recalculo de Valores na
-
-na_counts_restantes <- contar_nas(df)
-
-print("Variables con valores faltantes (NA_Count > 0):")
-print(na_counts_restantes)
-
-
-# ----------------------------------------------------------------------
-### 5. Eliminacción de las varibles restantes con Na ya que son fallos
-
-# Miramos las filas que tengan NA menos GarageYrBlt y LotFrontage
-# que seran imputados con la media despues de la division de los datos
-varible_elminar <- setdiff(na_counts_restantes$Variable,
-                           c("GarageYrBlt", "LotFrontage"))
-df <- df %>%
-  filter(if_all(all_of(varible_elminar), ~!is.na(.)))
-
-View(df)
-
-# Verificamos que ya no hay NA
-na_counts_restantes <- contar_nas(df)
-
-print("Variables con valores faltantes (NA_Count > 0):")
-print(na_counts_restantes)
-
-# ----------------------------------------------------------------------
-### 6. Detección de Variables Duplicadas
-
-num_duplicados <- sum(duplicated(df))
-
-if (num_duplicados > 0) {
-  print(paste("Hay", num_duplicados, "filas duplicadas en el dataset."))
-} else {
-  print("No se encontraron filas duplicadas.")
-}
-
-# +--------------------------------------+
-# | Análisis Exploratorio de Datos (EDA) |
-# +--------------------------------------+
-
-### 1. Análisis de Correlación entre Variables Numéricas
+# ------------------------------------------------------
+### 2. Análisis de Correlación entre Variables Numéricas
 
 print(num_vars)
 
@@ -204,20 +113,12 @@ print(head(cor_saleprice_sorted[-1], 10))
 
 best_10_cor_vars <- names(head(cor_saleprice_sorted[-1], 10))
 print(best_10_cor_vars)
-# ------------------------------------------------------
 
-### 2.Verificar si la relacion entre variables numericas y SalePrice es lineal
+# ------------------------------------------------------
+### 3.Verificar si la relacion entre variables numericas y SalePrice es lineal
 # Graficos de dispersion de las 5 variables con mayor correlacion con SalePrice
 
 # Diagrama de dispersion de OverallQual vs SalePrice
-plot(df[[best_10_cor_vars[1]]], df$SalePrice,
-     main = paste("Scatterplot de", best_10_cor_vars[1], "vs SalePrice"),
-     xlab = best_10_cor_vars[1],
-     ylab = "SalePrice",
-     col = "blue",
-     pch = 19)
-
-# Diagrama de dispersion de GrLiveArea vs SalePrice
 plot(df[[best_10_cor_vars[2]]], df$SalePrice,
      main = paste("Scatterplot de", best_10_cor_vars[2], "vs SalePrice"),
      xlab = best_10_cor_vars[2],
@@ -225,23 +126,23 @@ plot(df[[best_10_cor_vars[2]]], df$SalePrice,
      col = "blue",
      pch = 19)
 
-# Diagrama de dispersion de GarageCars vs SalePrice
+# Diagrama de dispersion de GrLiveArea vs SalePrice
 plot(df[[best_10_cor_vars[3]]], df$SalePrice,
-     main = paste("Scatterplot de", best_10_cor_vars[3], "vs  SalePrice"),
+     main = paste("Scatterplot de", best_10_cor_vars[3], "vs SalePrice"),
      xlab = best_10_cor_vars[3],
      ylab = "SalePrice",
      col = "blue",
      pch = 19)
 
-# Diagrama de dispersion de GarageArea vs SalePrice
+# Diagrama de dispersion de GarageCars vs SalePrice
 plot(df[[best_10_cor_vars[4]]], df$SalePrice,
-     main = paste("Scatterplot de", best_10_cor_vars[4], "vs SalePrice"),
+     main = paste("Scatterplot de", best_10_cor_vars[4], "vs  SalePrice"),
      xlab = best_10_cor_vars[4],
      ylab = "SalePrice",
      col = "blue",
      pch = 19)
 
-# Diagrama de dispersion de TotalBsmtSF vs SalePrice
+# Diagrama de dispersion de GarageArea vs SalePrice
 plot(df[[best_10_cor_vars[5]]], df$SalePrice,
      main = paste("Scatterplot de", best_10_cor_vars[5], "vs SalePrice"),
      xlab = best_10_cor_vars[5],
@@ -249,188 +150,69 @@ plot(df[[best_10_cor_vars[5]]], df$SalePrice,
      col = "blue",
      pch = 19)
 
-# En los graficos de GrLivArea, GarageArea y TotalBsmtSF
-# se observan algunos puntos atipicos que pueden afectar la linealidad
+# Diagrama de dispersion de TotalBsmtSF vs SalePrice
+plot(df[[best_10_cor_vars[6]]], df$SalePrice,
+     main = paste("Scatterplot de", best_10_cor_vars[6], "vs SalePrice"),
+     xlab = best_10_cor_vars[6],
+     ylab = "SalePrice",
+     col = "blue",
+     pch = 19)
 
-#------------------------------------------------------
-### 3. Tratamiento de Outliers en Variables Numéricas
 
-# Eliminamos los puntos atipicos de las variables con mayor correlacion
-# Definimos una función para eliminar outliers el rango intercuartílico (IQR)
-eliminar_outliers_iqr <- function(data, variable) {
-
-  n_initial <- nrow(data)
-  q1 <- quantile(data[[variable]], 0.25)
-  q3 <- quantile(data[[variable]], 0.75)
-  iqr <- q3 - q1
-  lower_bound <- q1 - 1.5 * iqr
-  upper_bound <- q3 + 1.5 * iqr
-  data_filtered <- data %>%
-    filter(data[[variable]] >= lower_bound & data[[variable]] <= upper_bound)
-
-  n_final <- nrow(data_filtered)
-  n_removed <- n_initial - n_final
-
-  cat("Limpieza en:", variable, "\n")
-  cat("  -> Filas eliminadas:", n_removed, "\n")
-  cat("  -> Filas restantes:", n_final, "\n\n")
-
-  data_filtered
-}
-
-variables_a_tratar <- c("OverallQual",
-                        "GarageCars",
-                        "GrLivArea",
-                        "GarageArea",
-                        "TotalBsmtSF")
-
-for (var in variables_a_tratar) {
-  df <- eliminar_outliers_iqr(df, var)
-}
-View(df)
 
 # ------------------------------------------------------
-### 4 Codficacion one-hot para variable cualitativas categoricas
-print(cual_vars)
+### 4.Verificar si hay outliers respecto a Log_SalePrice
+# Graficos de dispersion de las 5 variables con mayor correlacion con SalePrice
 
-list_one_hot_vars <- c("MSZoning",
-                       "Street",
-                       "Alley",
-                       "LotConfig",
-                       "Neighborhood",
-                       "Condition1",
-                       "Condition2",
-                       "BldgType",
-                       "HouseStyle",
-                       "RoofStyle",
-                       "RoofMatl",
-                       "Exterior1st",
-                       "Exterior2nd",
-                       "MasVnrType",
-                       "Foundation",
-                       "Heating",
-                       "Electrical",
-                       "Functional",
-                       "GarageType",
-                       "PavedDrive",
-                       "MiscFeature",
-                       "SaleType",
-                       "SaleCondition")
+# Diagrama de dispersion de OverallQual vs Log_SalePrice
+plot(df[[best_10_cor_vars[2]]], df$Log_SalePrice,
+     main = paste("Scatterplot de", best_10_cor_vars[2], "vs Log_SalePrice"),
+     xlab = best_10_cor_vars[2],
+     ylab = "Log_SalePrice",
+     col = "blue",
+     pch = 19)
 
-list_one_hot_validated <- intersect(list_one_hot_vars, cual_vars)
+# Diagrama de dispersion de GrLiveArea vs Log_SalePrice
+plot(df[[best_10_cor_vars[3]]], df$Log_SalePrice,
+     main = paste("Scatterplot de", best_10_cor_vars[3], "vs Log_SalePrice"),
+     xlab = best_10_cor_vars[3],
+     ylab = "Log_SalePrice",
+     col = "blue",
+     pch = 19)
 
-df[list_one_hot_validated] <- lapply(df[list_one_hot_validated], factor)
+# Diagrama de dispersion de GarageCars vs Log_SalePrice
+plot(df[[best_10_cor_vars[4]]], df$Log_SalePrice,
+     main = paste("Scatterplot de", best_10_cor_vars[4], "vs Log_SalePrice"),
+     xlab = best_10_cor_vars[4],
+     ylab = "Log_SalePrice",
+     col = "blue",
+     pch = 19)
 
-View(df)
+# Diagrama de dispersion de GarageArea vs Log_SalePrice
+plot(df[[best_10_cor_vars[5]]], df$Log_SalePrice,
+     main = paste("Scatterplot de", best_10_cor_vars[5], "vs Log_SalePrice"),
+     xlab = best_10_cor_vars[5],
+     ylab = "Log_SalePrice",
+     col = "blue",
+     pch = 19)
 
-# Excluir variables con menos de 2 niveles después de la limpieza
-variables_a_excluir <- c()
+# Diagrama de dispersion de TotalBsmtSF vs Log_SalePrice
+plot(df[[best_10_cor_vars[6]]], df$Log_SalePrice,
+     main = paste("Scatterplot de", best_10_cor_vars[6], "vs Log_SalePrice"),
+     xlab = best_10_cor_vars[6],
+     ylab = "Log_SalePrice",
+     col = "blue",
+     pch = 19)
 
-for (var in list_one_hot_validated) {
-  num_levels <- length(levels(df[[var]]))
-  if (num_levels < 2) {
-    cat("EXCLUIDA: La variable '", var,
-        "' tiene solo ", num_levels, " nivel(es) restante(s).\n")
-    variables_a_excluir <- c(variables_a_excluir, var)
-  }
-}
-
-if (length(variables_a_excluir) > 0) {
-  list_one_hot_final <- setdiff(list_one_hot_validated, variables_a_excluir)
-} else {
-  list_one_hot_final <- list_one_hot_validated
-}
-print("\nLista final para One-Hot Encoding:")
-print(list_one_hot_final)
-
-# Generar la fórmula para model.matrix
-formula_one_hot_final <- as.formula(paste("~",
-                                          paste(list_one_hot_final,
-                                                collapse = " + ")))
-# Crear la matriz dummy sin la columna intercepto
-dummy_matrix <- model.matrix(formula_one_hot_final, data = df)[, -1]
-# Eliminar las variables cualitativas originales del DataFrame
-df_processed <- df %>% select(-all_of(list_one_hot_final))
-# Combinar el DataFrame procesado con la matriz dummy
-df_encoded <- cbind(df_processed, as.data.frame(dummy_matrix))
-
-print("Dimensiones del DataFrame original:")
-print(dim(df))
-print("Dimensiones del DataFrame procesado (sin variables cualitativas):")
-print(dim(df_processed))
-print("Dimensiones de la matriz dummy generada:")
-print(dim(dummy_matrix))
-View(df_encoded)
-
-#------------------------------------------------------
-### 5. Codificacion ordinal para variables cualitativas ordinales
-
-list_ordinal_codification <- setdiff(cual_vars, list_one_hot_final)
-print("Variables Categóricas Ordinales (Requieren Mapeo Numérico Manual):\n")
-print(list_ordinal_codification)
-
-# Mapeos manuales para variables ordinales
-mapeo_ordinal <- list(
-  LotShape = c("Reg" = 4, "IR1" = 3, "IR2" = 2, "IR3" = 1, "No" = 0),
-  LandContour = c("Lvl" = 4, "Bnk" = 3, "HLS" = 2, "Low" = 1, "No" = 0),
-  Utilities = c("AllPub" = 4, "NoSewr" = 3, "NoSeWa" = 2, "ELO" = 1, "No" = 0),
-  LandSlope = c("Gtl" = 3, "Mod" = 2, "Sev" = 1, "No" = 0),
-  ExterQual = c("Ex" = 5, "Gd" = 4, "TA" = 3, "Fa" = 2, "Po" = 1, "No" = 0),
-  ExterCond = c("Ex" = 5, "Gd" = 4, "TA" = 3, "Fa" = 2, "Po" = 1, "No" = 0),
-  BsmtQual = c("Ex" = 5, "Gd" = 4, "TA" = 3, "Fa" = 2, "Po" = 1, "No" = 0),
-  BsmtCond = c("Ex" = 5, "Gd" = 4, "TA" = 3, "Fa" = 2, "Po" = 1, "No" = 0),
-  BsmtExposure = c("Gd" = 4, "Av" = 3, "Mn" = 2, "No" = 1, "No" = 0),
-  BsmtFinType1 = c("GLQ" = 6, "ALQ" = 5, "BLQ" = 4, "Rec" = 3,
-                   "LwQ" = 2, "Unf" = 1, "No" = 0),
-  BsmtFinType2 = c("GLQ" = 6, "ALQ" = 5, "BLQ" = 4, "Rec" = 3,
-                   "LwQ" = 2, "Unf" = 1, "No" = 0),
-  HeatingQC = c("Ex" = 5, "Gd" = 4, "TA" = 3, "Fa" = 2, "Po" = 1, "No" = 0),
-  CentralAir = c("Y" = 1, "N" = 0, "No" = 0),
-  KitchenQual = c("Ex" = 5, "Gd" = 4, "TA" = 3, "Fa" = 2, "Po" = 1, "No" = 0),
-  FireplaceQu = c("Ex" = 5, "Gd" = 4, "TA" = 3, "Fa" = 2, "Po" = 1, "No" = 0),
-  GarageFinish = c("Fin" = 3, "RFn" = 2, "Unf" = 1, "No" = 0),
-  GarageQual = c("Ex" = 5, "Gd" = 4, "TA" = 3, "Fa" = 2, "Po" = 1, "No" = 0),
-  GarageCond = c("Ex" = 5, "Gd" = 4, "TA" = 3, "Fa" = 2, "Po" = 1, "No" = 0),
-  PoolQC = c("Ex" = 4, "Gd" = 3, "TA" = 2, "Fa" = 1, "No" = 0),
-  Fence = c("GdPrv" = 4, "MnPrv" = 3, "GdWo" = 2, "MnWw" = 1, "No" = 0)
-)
-
-variables_con_mapeo <- names(mapeo_ordinal)
-list_ordinal_final <- intersect(list_ordinal_codification, variables_con_mapeo)
-
-for (var in list_ordinal_final) {
-  mapa_actual <- mapeo_ordinal[[var]]
-  etiquetas <- names(mapa_actual)
-  valores <- unname(mapa_actual)
-
-  df_encoded[[var]] <- valores[match(df_encoded[[var]], etiquetas)]
-  df_encoded[[var]] <- as.numeric(df_encoded[[var]])
-
-}
-View(df_encoded)
-
-#------------------------------------------------------
-### 6. Estandarizamos toas las variables numericas
-
-# Comprobar que todo el dataframe es numerico
-str(df_encoded)
-
-# Estandarizamos con Z-score todas las variables
-vars_a_estandarizar <- setdiff(names(df_encoded),
-                               c("SalePrice", "Log_SalePrice"))
-df_encoded[vars_a_estandarizar] <- scale(df_encoded[vars_a_estandarizar])
-View(df_encoded)
-summary(df_encoded)
-dim(df_encoded)
 
 # +-------------------------------------------------------------+
 # | División de los datos en conjunto de entrenamiento y prueba |
 # +-------------------------------------------------------------+
 
-# Dividmoes el dataset en conjunto de entrenamiento 60%
+# Dividimos el dataset en conjunto de entrenamiento 60%
 # prueba 20% y validacion 20%
 set.seed(123)
-n <- nrow(df_encoded)
+n <- nrow(df)
 train_indices <- sample(1:n, size = 0.6 * n)
 remaining_indices <- setdiff(1:n, train_indices)
 test_indices <- sample(remaining_indices,
@@ -446,9 +228,9 @@ print(paste("Tamaño del conjunto de validación:",
             length(val_indices)))
 
 # Creamos los conjuntos de datos
-train_data <- df_encoded[train_indices, ]
-test_data <- df_encoded[test_indices, ]
-val_data <- df_encoded[val_indices, ]
+train_data <- df[train_indices, ]
+test_data <- df[test_indices, ]
+val_data <- df[val_indices, ]
 
 print("Dimensiones del conjunto de entrenamiento:")
 print(dim(train_data))
@@ -457,33 +239,296 @@ print(dim(test_data))
 print("Dimensiones del conjunto de validación:")
 print(dim(val_data))
 
-# ------------------------------------------------------
-### 2. Imputación de Valores Faltantes (NA) en Conjuntos de Datos
-# Sustituimos las lineas de LotFrontage que sean NA por la media
+
+# +--------------------------------------+
+# | Limpieza y preparacion de los datos  |
+# +--------------------------------------+
+
+### 1. Conteo y Preparación de Valores Faltantes (NA)
+contar_nas <- function(data) {
+  na_counts <- data %>%
+    summarise(across(everything(), ~sum(is.na(.)))) %>%
+    pivot_longer(everything(), names_to = "Variable",
+                 values_to = "NA_Count") %>%
+    filter(NA_Count > 0)
+
+  na_counts
+}
+
+na_counts_iniciales <- contar_nas(train_data)
+
+print("Variables con valores faltantes (NA_Count > 0):")
+print(na_counts_iniciales)
+
+# ----------------------------------------------------------------------
+### 2. Imputación Estratégica de Valores Faltantes (NA)
+
+# Definicion de parametros de imputacion
 media_lotfrontage <- round(mean(train_data$LotFrontage, na.rm = TRUE))
-train_data$LotFrontage <- ifelse(is.na(train_data$LotFrontage),
-                                 media_lotfrontage,
-                                 train_data$LotFrontage)
 
-test_data$LotFrontage <- ifelse(is.na(test_data$LotFrontage),
-                                media_lotfrontage,
-                                test_data$LotFrontage)
-val_data$LotFrontage <- ifelse(is.na(val_data$LotFrontage),
-                               media_lotfrontage,
-                               val_data$LotFrontage)
 
+# Definir la lista de variables cualitativas donde NA significa "Ausencia".
+variables_ausencia <- c("Alley", "MasVnrType", "BsmtQual", "BsmtCond",
+                        "BsmtExposure", "BsmtFinType1", "BsmtFinType2",
+                        "FireplaceQu", "GarageType", "GarageFinish",
+                        "GarageQual", "GarageCond", "PoolQC", "Fence",
+                        "MiscFeature", "Electrical")
+
+# Funcion para aplicar la imputacion a cualquier subconjunto de datos
+impute_set <- function(df_set, median_lf) {
+  variables_a_imputar_cat <- intersect(variables_ausencia, names(df_set))
+  df_set[variables_a_imputar_cat] <- lapply(df_set[variables_a_imputar_cat],
+                                            function(columna) {
+                                              ifelse(is.na(columna),
+                                                     "No", columna)
+                                            })
+
+  # Imputar los valores de LotFrontage por la media
+  df_set$LotFrontage <- ifelse(is.na(df_set$LotFrontage),
+                               median_lf, df_set$LotFrontage)
+
+  # Imputar los valores de GarageYrBlt y MasVnrArea por el valor 0
+  df_set$GarageYrBlt <- ifelse(is.na(df_set$GarageYrBlt),
+                               0, df_set$GarageYrBlt)
+  df_set$MasVnrArea <- ifelse(is.na(df_set$MasVnrArea),
+                              0, df_set$MasVnrArea)
+  df_set
+}
+
+# Aplicar la función de imputación a los conjuntos de datos
+df_train_imputed <- impute_set(train_data, media_lotfrontage)
+df_test_imputed <- impute_set(test_data, media_lotfrontage)
+df_val_imputed <- impute_set(val_data, media_lotfrontage)
+
+# Verificamos los resultados de la imputación
+na_counts_iniciales <- contar_nas(df_train_imputed)
+
+print("Variables con valores faltantes (NA_Count > 0):")
+print(na_counts_iniciales)
+
+View(df_train_imputed)
+
+#------------------------------------------------------
+### 3. Verificación de Variables Duplicadas
+
+num_duplicados_train <- sum(duplicated(df_train_imputed))
+
+if (num_duplicados_train > 0) {
+  print(paste("Hay", num_duplicados_train, "filas duplicadas en el dataset."))
+} else {
+  print("No se encontraron filas duplicadas.")
+}
+
+if (num_duplicados_train > 0) {
+  df_train_imputed <- df_train_imputed[!duplicated(df_train_imputed), ]
+  df_val_imputed <- df_val_imputed[!duplicated(df_val_imputed), ]
+  df_test_imputed <- df_test_imputed[!duplicated(df_test_imputed), ]
+
+  print("Filas duplicadas eliminadas de los tres conjuntos.")
+} else {
+  print("No se encontraron filas duplicadas, los conjuntos están limpios.")
+}
+
+#------------------------------------------------------
+### 4. Tratamiento de Outliers en Variables Numéricas
+df_train_outliers <- df_train_imputed %>%
+  filter(GrLivArea <= 4000) %>%
+  filter(TotalBsmtSF <= 3000) %>%
+  filter(GarageArea <= 1200)
+
+print("Dimensiones después de eliminar Na:")
+print(dim(df_train_imputed))
+print("Dimensiones después de eliminar outliers:")
+print(dim(df_train_outliers))
+
+# +----------------------------------------+
+# | Codificación de variables cualitativas |
+# +----------------------------------------+
+
+### 1. Codificacion ordinal para variables cualitativas ordinales
+print(cual_vars)
+lista_varibles_ordinales <- c("LotShape",
+                              "LandContour",
+                              "Utilities",
+                              "LandSlope",
+                              "ExterQual",
+                              "ExterCond",
+                              "BsmtQual",
+                              "BsmtCond",
+                              "BsmtExposure",
+                              "BsmtFinType1",
+                              "BsmtFinType2",
+                              "HeatingQC",
+                              "CentralAir",
+                              "KitchenQual",
+                              "FireplaceQu",
+                              "GarageFinish",
+                              "GarageQual",
+                              "GarageCond",
+                              "PoolQC",
+                              "Fence"
+)
+# Mapeos manuales para variables ordinales
+mapeo_ordinal <- list(
+  LotShape = c("Reg" = 4, "IR1" = 3, "IR2" = 2, "IR3" = 1, "No" = 0),
+  LandContour = c("Lvl" = 4, "Bnk" = 3, "HLS" = 2, "Low" = 1, "No" = 0),
+  Utilities = c("AllPub" = 4, "NoSewr" = 3, "NoSeWa" = 2, "ELO" = 1, "No" = 0),
+  LandSlope = c("Gtl" = 3, "Mod" = 2, "Sev" = 1, "No" = 0),
+  ExterQual = c("Ex" = 5, "Gd" = 4, "TA" = 3, "Fa" = 2, "Po" = 1, "No" = 0),
+  ExterCond = c("Ex" = 5, "Gd" = 4, "TA" = 3, "Fa" = 2, "Po" = 1, "No" = 0),
+  BsmtQual = c("Ex" = 5, "Gd" = 4, "TA" = 3, "Fa" = 2, "Po" = 1, "No" = 0),
+  BsmtCond = c("Ex" = 5, "Gd" = 4, "TA" = 3, "Fa" = 2, "Po" = 1, "No" = 0),
+  BsmtExposure = c("Gd" = 3, "Av" = 2, "Mn" = 1, "No" = 0),
+  BsmtFinType1 = c("GLQ" = 6, "ALQ" = 5, "BLQ" = 4, "Rec" = 3,
+                   "LwQ" = 2, "Unf" = 1, "No" = 0),
+  BsmtFinType2 = c("GLQ" = 6, "ALQ" = 5, "BLQ" = 4, "Rec" = 3,
+                   "LwQ" = 2, "Unf" = 1, "No" = 0),
+  HeatingQC = c("Ex" = 5, "Gd" = 4, "TA" = 3, "Fa" = 2, "Po" = 1, "No" = 0),
+  CentralAir = c("Y" = 1, "N" = 0, "No" = 0),
+  KitchenQual = c("Ex" = 5, "Gd" = 4, "TA" = 3, "Fa" = 2, "Po" = 1, "No" = 0),
+  FireplaceQu = c("Ex" = 5, "Gd" = 4, "TA" = 3, "Fa" = 2, "Po" = 1, "No" = 0),
+  GarageFinish = c("Fin" = 3, "RFn" = 2, "Unf" = 1, "No" = 0),
+  GarageQual = c("Ex" = 5, "Gd" = 4, "TA" = 3, "Fa" = 2, "Po" = 1, "No" = 0),
+  GarageCond = c("Ex" = 5, "Gd" = 4, "TA" = 3, "Fa" = 2, "Po" = 1, "No" = 0),
+  PoolQC = c("Ex" = 4, "Gd" = 3, "TA" = 2, "Fa" = 1, "No" = 0),
+  Fence = c("GdPrv" = 4, "MnPrv" = 3, "GdWo" = 2, "MnWw" = 1, "No" = 0)
+)
+
+list_ordinal_vars <- names(mapeo_ordinal)
+
+apply_ordinal_encoding <- function(df_set) {
+  for (var in list_ordinal_vars) {
+    if (var %in% names(df_set)) {
+      df_set[[var]] <- as.character(df_set[[var]])
+      df_set[[var]] <- unname(mapeo_ordinal[[var]][df_set[[var]]])
+      df_set[[var]][is.na(df_set[[var]])] <- 0
+    }
+  }
+  df_set
+}
+
+df_train_ordinal <- apply_ordinal_encoding(df_train_outliers)
+df_val_ordinal <- apply_ordinal_encoding(df_val_imputed)
+df_test_ordinal <- apply_ordinal_encoding(df_test_imputed)
+
+View(df_train_ordinal)
+
+#------------------------------------------------------
+### 2. Codficacion one-hot para variable cualitativas categoricas
+
+list_one_hot_codification <- setdiff(cual_vars, list_ordinal_vars)
+print("Variables Categóricas Ordinales (Requieren Mapeo Numérico Manual):\n")
+print(list_one_hot_codification)
+
+formula_ohe_final <- as.formula(paste("~ . - SalePrice - Log_SalePrice"))
+
+
+apply_one_hot <- function(df_set) {
+  x_matrix <- model.matrix(formula_ohe_final, data = df_set)
+  x_matrix <- x_matrix[, -1]
+  y_vector <- df_set$Log_SalePrice
+  y_orig_vector <- df_set$SalePrice
+  df_predictors <- as_tibble(x_matrix)
+  df_final <- df_predictors %>% mutate(SalePrice = y_orig_vector,
+                                       Log_SalePrice = y_vector)
+  df_final
+}
+
+View(df_val_ordinal)
+print(contar_nas(df_val_ordinal))
+
+
+# 3. Aplicar la Codificación One-Hot a los tres conjuntos
+df_train_one_hot <- apply_one_hot(df_train_ordinal)
+df_val_one_hot <- apply_one_hot(df_val_ordinal)
+df_test_one_hot <- apply_one_hot(df_test_ordinal)
+
+
+print("Dimensiones del DataFrame de Entrenamiento después de One-Hot Encoding:")
+print(dim(df_train_one_hot))
+print(dim(df_val_one_hot))
+print(dim(df_test_one_hot))
+View(df_train_one_hot)
+
+#-------------------------------------------------------
+### 3. Alineacion de columnas entre conjuntos
+
+y_vars <- c("SalePrice", "Log_SalePrice")
+train_vars <- setdiff(names(df_train_one_hot), y_vars)
+
+align_columns <- function(df_input, reference_vars) {
+  y_data <- df_input %>% select(all_of(y_vars))
+  df_predictors <- df_input %>% select(-all_of(y_vars))
+  missing_cols <- setdiff(reference_vars, names(df_predictors))
+  extra_cols <- setdiff(names(df_predictors), reference_vars)
+  if (length(missing_cols) > 0) {
+    for (col in missing_cols) {
+      df_predictors[[col]] <- 0
+    }
+  }
+
+  if (length(extra_cols) > 0) {
+    df_predictors <- df_predictors %>% select(-all_of(extra_cols))
+  }
+
+  df_aligned <- df_predictors %>% select(all_of(reference_vars))
+  df_final <- df_aligned %>%
+    mutate(SalePrice = y_data$SalePrice,
+           Log_SalePrice = y_data$Log_SalePrice)
+
+  df_final
+}
+
+df_val_one_hot_aligned <- align_columns(df_val_one_hot, train_vars)
+df_test_one_hot_aligned <- align_columns(df_test_one_hot, train_vars)
+df_train_one_hot_aligned <- df_train_one_hot
+
+# Verificar las dimensiones después de la alineación
+print("Dimensiones después de la alineación:")
+print(dim(df_train_one_hot_aligned))
+print(dim(df_val_one_hot_aligned))
+print(dim(df_test_one_hot_aligned))
+
+#-------------------------------------------------------
+### 4. Estandarizacion de las variables numericas
+
+y_var <- "Log_SalePrice"
+
+x_train_to_scale <- df_train_one_hot_aligned %>% select(-all_of(y_var))
+
+
+train_mean <- colMeans(x_train_to_scale)
+train_sd <- apply(x_train_to_scale, 2, sd)
+train_sd[train_sd == 0] <- 1
+
+
+x_val_to_scale <- df_val_one_hot_aligned %>% select(-all_of(y_var))
+x_test_to_scale <- df_test_one_hot_aligned %>% select(-all_of(y_var))
+
+x_scaled_train <- scale(x_train_to_scale, center = train_mean, scale = train_sd)
+x_scaled_val <- scale(x_val_to_scale, center = train_mean, scale = train_sd)
+x_scaled_test <- scale(x_test_to_scale, center = train_mean, scale = train_sd)
+
+
+df_train_scaled <- as.data.frame(x_scaled_train)
+df_val_scaled <- as.data.frame(x_scaled_val)
+df_test_scaled <- as.data.frame(x_scaled_test)
+
+df_train_final <- df_train_scaled %>%
+  mutate(Log_SalePrice = df_train_one_hot$Log_SalePrice)
+df_val_final <- df_val_scaled %>%
+  mutate(Log_SalePrice = df_val_one_hot$Log_SalePrice)
+df_test_final <- df_test_scaled %>%
+  mutate(Log_SalePrice = df_test_one_hot$Log_SalePrice)
+
+View(df_train_final)
 
 
 # +-----------------------------------------------------------------+
 # | Filtro de Variables con Varianza Cero (Constantes) antes de PCA |
 # +-----------------------------------------------------------------+
 
-# Inicializar los conjuntos finales
-df_train_final <- train_data
-df_test_final <- test_data
-df_val_final <- val_data
-
-predict_vars <- setdiff(names(df_train_final), c("SalePrice", "Log_SalePrice"))
+predict_vars <- setdiff(names(df_train_final),  "Log_SalePrice")
 
 unique_counts <- sapply(df_train_final[, predict_vars],
                         function(x) length(unique(x)))
@@ -506,10 +551,7 @@ if (length(zero_variance_vars) > 0) {
 }
 print("Dimensiones de entrenamiento final:")
 print(dim(df_train_final))
-print("Dimensiones de prueba final:")
-print(dim(df_test_final))
-print("Dimensiones de validación final:")
-print(dim(df_val_final))
+
 
 # +---------------------------------------------+
 # | Análisis de Componentes Principales (PCA)   |
@@ -529,9 +571,9 @@ respca ~ sdev^2
 summary(respca)
 
 
-# Nos quedamos con los 90 primeros componentes principales
+# Nos quedamos con los 91 primeros componentes principales
 # ya que estan muy dispersosn y la proporcion acumuluda de varianza
-# es de un 86.329%
+# es de un 85.048%
 
 # ----------------------------------------------------------------------
 
@@ -562,10 +604,6 @@ dim(df_pca_train)
 # ----------------------------------------------------------------------
 
 # 4. Transformación de los conjuntos de prueba y validación
-# respca contiene las "formulas" para crear los PC
-# a partir de esta "formulas" y usando predict y
-# los datos de prueba y validacion se crean los nuevos dataframes
-# y de esos dataframes se seleccionan los primeros num_componentes
 test_pca_transformed <- predict(respca,
                                 newdata = df_test_final %>%
                                   select(-SalePrice, -Log_SalePrice))
@@ -598,14 +636,14 @@ View(df_pca_train)
 # | Regresión Lineal Múltiple con PCA |
 # +-----------------------------------+
 
-# 1. Eentrenamiento del Modelo de Regresión Lineal Múltiple con PCA
+# 1. Entrenamiento del Modelo de Regresión Lineal Múltiple con PCA
 modelo_lm_pca <- lm(Log_SalePrice ~ ., data = df_pca_train)
 
 print("Modelo Ajustado con PCA:")
 print(summary(modelo_lm_pca))
 
 #----------------------------------------------
-# 2. Perdicción y Evaluación
+# 2. Predicción y Evaluación
 
 pred_train_pca <- predict(modelo_lm_pca, newdata = df_pca_train)
 pred_val_pca <- predict(modelo_lm_pca, newdata = df_pca_val)
