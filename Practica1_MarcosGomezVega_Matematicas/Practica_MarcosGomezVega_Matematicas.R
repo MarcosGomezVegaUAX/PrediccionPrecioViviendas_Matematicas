@@ -341,6 +341,21 @@ print(dim(df_train_imputed))
 print("Dimensiones después de eliminar outliers:")
 print(dim(df_train_outliers))
 
+# Tratamiento de outliers en los conjuntos de validación y prueba
+df_val_outliers <- df_val_imputed %>%
+  filter(GrLivArea <= 4000) %>%
+  filter(TotalBsmtSF <= 3000) %>%
+  filter(GarageArea <= 1200)
+df_test_outliers <- df_test_imputed %>%
+  filter(GrLivArea <= 4000) %>%
+  filter(TotalBsmtSF <= 3000) %>%
+  filter(GarageArea <= 1200)
+
+print("Dimensiones de validación después de eliminar outliers:")
+print(dim(df_val_outliers))
+print("Dimensiones de prueba después de eliminar outliers:")
+print(dim(df_test_outliers))
+
 # +----------------------------------------+
 # | Codificación de variables cualitativas |
 # +----------------------------------------+
@@ -408,8 +423,8 @@ apply_ordinal_encoding <- function(df_set) {
 }
 
 df_train_ordinal <- apply_ordinal_encoding(df_train_outliers)
-df_val_ordinal <- apply_ordinal_encoding(df_val_imputed)
-df_test_ordinal <- apply_ordinal_encoding(df_test_imputed)
+df_val_ordinal <- apply_ordinal_encoding(df_val_outliers)
+df_test_ordinal <- apply_ordinal_encoding(df_test_outliers)
 
 View(df_train_ordinal)
 
@@ -491,19 +506,17 @@ print(dim(df_test_one_hot_aligned))
 
 #-------------------------------------------------------
 ### 4. Estandarizacion de las variables numericas
+y_vars <- c("Log_SalePrice", "SalePrice")
 
-y_var <- "Log_SalePrice"
-
-x_train_to_scale <- df_train_one_hot_aligned %>% select(-all_of(y_var))
-
+x_train_to_scale <- df_train_one_hot_aligned %>% select(-all_of(y_vars))
 
 train_mean <- colMeans(x_train_to_scale)
 train_sd <- apply(x_train_to_scale, 2, sd)
 train_sd[train_sd == 0] <- 1
 
 
-x_val_to_scale <- df_val_one_hot_aligned %>% select(-all_of(y_var))
-x_test_to_scale <- df_test_one_hot_aligned %>% select(-all_of(y_var))
+x_val_to_scale <- df_val_one_hot_aligned %>% select(-all_of(y_vars))
+x_test_to_scale <- df_test_one_hot_aligned %>% select(-all_of(y_vars))
 
 x_scaled_train <- scale(x_train_to_scale, center = train_mean, scale = train_sd)
 x_scaled_val <- scale(x_val_to_scale, center = train_mean, scale = train_sd)
@@ -515,14 +528,16 @@ df_val_scaled <- as.data.frame(x_scaled_val)
 df_test_scaled <- as.data.frame(x_scaled_test)
 
 df_train_final <- df_train_scaled %>%
-  mutate(Log_SalePrice = df_train_one_hot$Log_SalePrice)
+  mutate(SalePrice = df_train_one_hot_aligned$SalePrice,
+         Log_SalePrice = df_train_one_hot_aligned$Log_SalePrice)
 df_val_final <- df_val_scaled %>%
-  mutate(Log_SalePrice = df_val_one_hot$Log_SalePrice)
+  mutate(SalePrice = df_val_one_hot_aligned$SalePrice,
+         Log_SalePrice = df_val_one_hot_aligned$Log_SalePrice)
 df_test_final <- df_test_scaled %>%
-  mutate(Log_SalePrice = df_test_one_hot$Log_SalePrice)
+  mutate(SalePrice = df_test_one_hot_aligned$SalePrice,
+         Log_SalePrice = df_test_one_hot_aligned$Log_SalePrice)
 
 View(df_train_final)
-
 
 # +-----------------------------------------------------------------+
 # | Filtro de Variables con Varianza Cero (Constantes) antes de PCA |
